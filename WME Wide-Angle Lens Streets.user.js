@@ -1306,7 +1306,7 @@ var WMEWAL_Streets;
                 const lastEditor = W.model.users.getObjectById(lastEditorID);
                 const createdEditorID = s.getCreatedBy();
                 const createdEditor = W.model.users.getObjectById(createdEditorID);
-                const address = s.getAddress();
+                const address = s.getAddress(W.model);
                 let thisStreet = null;
                 const ps = includeShields ? W.model.streets.getObjectById(sid) : null;
                 if (sid != null && !newSegment) {
@@ -1340,12 +1340,12 @@ var WMEWAL_Streets;
                         return matches;
                     });
                 }
-                if (thisStreet == null) {
+                if (!thisStreet) {
                     thisStreet = {
                         id: sid,
                         city: ((address && !address.attributes.isEmpty && address.attributes.city.hasName()) ? address.attributes.city.getAttribute('name') : "No City"),
                         state: ((address && !address.attributes.isEmpty) ? address.attributes.state.getAttribute('name') : "No State"),
-                        name: ((address && !address.attributes.isEmpty && !address.attributes.street.getAttribute('isEmpty')) ? address.attributes.street.getAttribute('name') : null),
+                        name: ((address && !address.attributes.isEmpty && !address.attributes.street.attributes.isEmpty) ? address.attributes.street.getAttribute('name') : null),
                         geometries: new OpenLayers.Geometry.Collection(),
                         lockLevel: (s.getAttribute('lockRank') || 0) + 1,
                         segments: [],
@@ -1355,7 +1355,7 @@ var WMEWAL_Streets;
                         direction: determineDirection(s),
                         issues: issues,
                         length: s.getAttribute('length') * (isImperial ? mToFt : 1.0),
-                        lastEditor: lastEditor.getAttribute('userName'),
+                        lastEditor: lastEditor === null ? 'unknown' : lastEditor.getAttribute('userName'),
                         asc: (s.getFlagAttribute('fwdSpeedCamera') || s.getFlagAttribute('revSpeedCamera') ? 'Yes' : 'No'),
                         createdEditor: (createdEditor && createdEditor.getAttribute('userName')) || "",
                         shieldText: ps != null ? ps.getAttribute('signText') || '' : '',
