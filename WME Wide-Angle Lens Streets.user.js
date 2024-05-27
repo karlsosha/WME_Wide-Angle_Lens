@@ -11,13 +11,14 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.003
+// @version             2024.05.17.002
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40646-wme-wide-angle-lens-streets/code/WME%20Wide-Angle%20Lens%20Streets.user.js
+// @connect             https://greasyfork.org
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.meta.js
 // @downloadURL         https://greasyfork.org/en/scripts/418292-wme-wide-angle-lens-streets-beta/code/WME%20Wide-Angle%20Lens%20Streets.user.js
@@ -26,7 +27,7 @@ var WMEWAL_Streets;
 (function (WMEWAL_Streets) {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
         + '<li>Fixed issue with getting last/creating editor<li>'
@@ -1355,7 +1356,7 @@ var WMEWAL_Streets;
                         direction: determineDirection(s),
                         issues: issues,
                         length: s.getAttribute('length') * (isImperial ? mToFt : 1.0),
-                        lastEditor: lastEditor === null ? 'unknown' : lastEditor.getAttribute('userName'),
+                        lastEditor: (lastEditor && lastEditor.getAttribute('userName')) || "",
                         asc: (s.getFlagAttribute('fwdSpeedCamera') || s.getFlagAttribute('revSpeedCamera') ? 'Yes' : 'No'),
                         createdEditor: (createdEditor && createdEditor.getAttribute('userName')) || "",
                         shieldText: ps != null ? ps.getAttribute('signText') || '' : '',
@@ -1487,7 +1488,7 @@ var WMEWAL_Streets;
                             primaryStreet = W.model.streets.getObjectById(primaryStreetID);
                         }
                         let issues = 0;
-                        const address = segment.getAddress();
+                        const address = segment.getAddress(W.model);
                         if (state != null) {
                             if (!(address?.attributes?.isEmpty ?? true) && address.attributes.state != null) {
                                 if (settings.StateOperation === Operation.Equal && address.attributes.state.getAttribute('id') !== state.getAttribute('id') ||
@@ -1558,12 +1559,12 @@ var WMEWAL_Streets;
                             }
                             let anyConnectedNameMatched = false;
                             for (let ixDir = 0; ixDir < directions.length && !anyConnectedNameMatched; ixDir++) {
-                                const connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
+                                const connectedSegments = segment.getConnectedSegmentsByDirection(W.model, directions[ixDir]);
                                 for (let ixSeg = 0; ixSeg < connectedSegments.length && !anyConnectedNameMatched; ixSeg++) {
                                     // Don't look at segments that have the same primary street ID
                                     if (connectedSegments[ixSeg].getAttribute('primaryStreetID') != primaryStreetID) {
                                         const connectedSegment = W.model.segments.getObjectById(connectedSegments[ixSeg].getAttribute('id'));
-                                        const connectedAddress = connectedSegment?.getAddress();
+                                        const connectedAddress = connectedSegment?.getAddress(W.model);
                                         anyConnectedNameMatched = anyConnectedNameMatched || !(connectedAddress?.attributes?.isEmpty ?? true) && !(connectedAddress.attributes.street?.getAttribute('isEmpty') ?? true) && intersectingNameRegex.test(connectedAddress.attributes.street.getAttribute('name'));
                                         if (settings.IncludeAltNames && (connectedSegment.getAttribute('streetIDs')?.length ?? 0) > 0) {
                                             for (let streetIx = 0; streetIx < connectedSegment.getAttribute('streetIDs').length && !anyConnectedNameMatched; streetIx++) {
@@ -1638,7 +1639,7 @@ var WMEWAL_Streets;
                             }
                             for (let ixDir = 0; ixDir < directions.length && !instructionMatches; ixDir++) {
                                 const node = segment.getNodeByDirection(directions[ixDir]);
-                                const connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
+                                const connectedSegments = segment.getConnectedSegmentsByDirection(W.model, directions[ixDir]);
                                 for (let ixSeg = 0; ixSeg < connectedSegments.length && !instructionMatches; ixSeg++) {
                                     if (settings.EditableByMe && !connectedSegments[ixSeg].arePropertiesEditable()) {
                                         continue;
@@ -1706,7 +1707,7 @@ var WMEWAL_Streets;
                             let hasTurnRestrictions = false;
                             for (const direction of directions) {
                                 const node = segment.getNodeByDirection(direction);
-                                const connSegments = segment.getConnectedSegmentsByDirection(direction);
+                                const connSegments = segment.getConnectedSegmentsByDirection(W.model, direction);
                                 for (const connSegment of connSegments) {
                                     const turn = graph.getTurnThroughNode(node, segment, connSegment);
                                     if ((turn?.getTurnData()?.getRestrictions()?.length ?? 0) > 0) {
@@ -1741,7 +1742,7 @@ var WMEWAL_Streets;
                                     for (let ixLegal = 0; ixLegal < keys.legal.length && !hasRestrictedTurns; ixLegal++) {
                                         if (keys.legal[ixLegal].from.getAttribute('id') === segment.getAttribute('id') &&
                                             keys.legal[ixLegal].to.isDrivable() &&
-                                            !segment.isTurnAllowed(keys.legal[ixLegal].to, node)) {
+                                            !segment.isTurnAllowed(W.model, keys.legal[ixLegal].to, node)) {
                                             hasRestrictedTurns = true;
                                         }
                                     }
@@ -1768,7 +1769,7 @@ var WMEWAL_Streets;
                             for (let ixDir = 0; ixDir < directions.length; ixDir++) {
                                 const node = segment.getNodeByDirection(directions[ixDir]);
                                 if (node) {
-                                    hasUTurn = hasUTurn || (node.connectionsExist() && segment.isTurnAllowed(segment, node));
+                                    hasUTurn = hasUTurn || (node.connectionsExist() && segment.isTurnAllowed(W.model, segment, node));
                                     hasSoftTurns = hasSoftTurns || (node.connectionsExist() && !segment.areTurnsLocked(node));
                                 }
                             }
@@ -1872,7 +1873,7 @@ var WMEWAL_Streets;
                             let directions = [...new Set(dirs)];
                             for (let ixDir = 0; ixDir < directions.length; ixDir++) {
                                 const node = segment.getNodeByDirection(directions[ixDir]);
-                                const connectedSegments = segment.getConnectedSegmentsByDirection(directions[ixDir]);
+                                const connectedSegments = segment.getConnectedSegmentsByDirection(W.model, directions[ixDir]);
                                 for (let ixSeg = 0; ixSeg < connectedSegments.length && !hasTIO; ixSeg++) {
                                     const connectedSegment = connectedSegments[ixSeg];
                                     if (settings.EditableByMe && !connectedSegment.arePropertiesEditable()) {
@@ -1943,8 +1944,8 @@ var WMEWAL_Streets;
                             }
                         }
                         if (settings.Loop && !segment.isInRoundabout()) {
-                            const fromSegments = segment.getConnectedSegmentsByDirection("from");
-                            const toSegments = segment.getConnectedSegmentsByDirection("to");
+                            const fromSegments = segment.getConnectedSegmentsByDirection(W.model, "from");
+                            const toSegments = segment.getConnectedSegmentsByDirection(W.model, "to");
                             let hasLoop = false;
                             for (let ixFrom = 0; ixFrom < fromSegments.length && !hasLoop; ixFrom++) {
                                 for (let ixTo = 0; ixTo < toSegments.length && !hasLoop; ixTo++) {

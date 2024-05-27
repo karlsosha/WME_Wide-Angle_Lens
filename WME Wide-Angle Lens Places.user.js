@@ -11,13 +11,14 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.003
+// @version             2024.05.17.002
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40645-wme-wide-angle-lens-places/code/WME%20Wide-Angle%20Lens%20Places.user.js
+// @connect             https://greasyfork.org
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/418293-wme-wide-angle-lens-places-beta/code/WME%20Wide-Angle%20Lens%20Places.meta.js
 // @downloadURL         https://greasyfork.org/scripts/418293-wme-wide-angle-lens-places-beta/code/WME%20Wide-Angle%20Lens%20Places.user.js
@@ -26,7 +27,7 @@ var WMEWAL_Places;
 (function (WMEWAL_Places) {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
         + '<li>Fixed issue with getting last/creating editor<li>'
@@ -786,7 +787,11 @@ var WMEWAL_Places;
             const venue = venues[ix];
             if (venue != null) {
                 const categories = venue.getAttribute('categories');
-                const address = venue.getAddress();
+                const address = venue.getAddress(W.model);
+                if (venue.getAttribute('streetID') && address && address.getCountry() == null) {
+                    log("warn", "no address for streetID " + venue.getAttribute('streetID') + ", venue " + venue.getAttribute('name') + " " + venue.getID());
+                }
+                const houseNum = venue.getAttribute('houseNumber') ?? "";
                 if ((settings.LockLevel == null ||
                     (settings.LockLevelOperation === Operation.Equal && (venue.getAttribute('lockRank') || 0) + 1 === settings.LockLevel) ||
                     (settings.LockLevelOperation === Operation.NotEqual && (venue.getAttribute('lockRank') || 0) + 1 !== settings.LockLevel)) &&
@@ -869,7 +874,7 @@ var WMEWAL_Places;
                     if (settings.NoName && !venue.getAttribute('name')) {
                         issues |= Issue.NoName;
                     }
-                    if (settings.NoHouseNumber && (!address || address.attributes.houseNumber == null)) {
+                    if (settings.NoHouseNumber && houseNum == '') {
                         issues |= Issue.MissingHouseNumber;
                     }
                     if (settings.AdLocked && venue.getAttribute('adLocked')) {
@@ -930,7 +935,7 @@ var WMEWAL_Places;
                             mainCategory: venue.getMainCategory(),
                             name: venue.getAttribute('name'),
                             lockLevel: venue.getLockRank() + 1,
-                            pointGeometry: venue.getPointGeometry(),
+                            pointGeometry: venue.getOLGeometry().getCentroid(),
                             // navigationPoint: venue.getNavigationPoint(),
                             categories: categories,
                             streetID: venue.getAttribute('streetID'),
@@ -938,7 +943,7 @@ var WMEWAL_Places;
                             isApproved: venue.isApproved(),
                             city: ((address && !address.isEmpty() && address.attributes.city && !address.attributes.city.isEmpty() && address.attributes.city.hasName()) ? address.attributes.city.getAttribute('name') : "No City"),
                             state: ((address && !address.isEmpty() && address.attributes.state) ? address.attributes.state.getAttribute('name') : "No State"),
-                            houseNumber: venue.getAttribute('houseNumber') ?? "",
+                            houseNumber: houseNum,
                             streetName: ((address && !address.isEmpty() && !address.isEmptyStreet()) ? address.attributes.street.getAttribute('name') : "") || "",
                             lastEditor: lastEditor?.getAttribute('userName') ?? '',
                             createdBy: createdBy?.getAttribute('userName') ?? '',

@@ -11,13 +11,14 @@
 // @author              vtpearce and crazycaveman
 // @match               *://*.waze.com/*editor*
 // @exclude             *://*.waze.com/user/editor*
-// @version             2023.09.25.003
+// @version             2024.05.17.002
 // @grant               GM_xmlhttpRequest
 // @copyright           2020 vtpearce
 // @license             CC BY-SA 4.0
 // @require             https://greasyfork.org/scripts/24851-wazewrap/code/WazeWrap.js
 // @updateURL           https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
 // @downloadURL         https://greasyfork.org/scripts/40644-wme-wide-angle-lens-map-comments/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
+// @connect             https://greasyfork.org
 // ==/UserScript==
 // @updateURL           https://greasyfork.org/scripts/418294-wme-wide-angle-lens-map-comments-beta/code/WME%20Wide-Angle%20Lens%20Map%20Comments.meta.js
 // @downloadURL         https://greasyfork.org/scripts/418294-wme-wide-angle-lens-map-comments-beta/code/WME%20Wide-Angle%20Lens%20Map%20Comments.user.js
@@ -26,7 +27,7 @@ var WMEWAL_MapComments;
 (function (WMEWAL_MapComments) {
     const SCRIPT_NAME = GM_info.script.name;
     const SCRIPT_VERSION = GM_info.script.version.toString();
-    const DOWNLOAD_URL = GM_info.scriptUpdateURL;
+    const DOWNLOAD_URL = GM_info.script.downloadURL;
     const updateText = '<ul>'
         + '<li>Fixes for latest WME release</li>'
         + '<li>Fixed issue with getting last/creating editor<li>'
